@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A premium dashboard for tracking Google Cloud BigQuery Release Notes, with search, filtering, and a custom Tweet composer.">
+    <title>BigQuery Release Notes Dashboard & X Share</title>
+    <!-- Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-mode">
+    <div class="app-container">
+        <!-- Sidebar/Left Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 24 24" width="32" height="32">
+                        <path fill="#4285F4" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                        <path fill="#EA4335" d="M12 6c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"/>
+                        <path fill="#FBBC05" d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                    </svg>
+                </div>
+                <h2>BigQuery Notes</h2>
+            </div>
+            
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <span class="stat-label">Total Notes</span>
+                    <span id="total-notes-count" class="stat-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Last Checked</span>
+                    <span id="last-fetched-time" class="stat-value">-</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Feed Status</span>
+                    <span id="feed-status-badge" class="status-badge live">
+                        <span class="status-dot"></span>
+                        <span id="feed-status-text">Connecting</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="sidebar-info">
+                <p>Track the latest features, improvements, fixes, and announcements directly from the Google BigQuery feed.</p>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard Section -->
+        <main class="main-content">
+            <!-- Header Toolbar -->
+            <header class="dashboard-header">
+                <div class="header-titles">
+                    <h1>Release Notes Feed</h1>
+                    <p class="subtitle">Monitor official releases and share key changes with your network.</p>
+                </div>
+                
+                <div class="header-actions">
+                    <button id="refresh-btn" class="btn btn-primary btn-refresh" aria-label="Refresh release notes">
+                        <i class="fa-solid fa-arrows-rotate" id="refresh-icon"></i>
+                        <span>Refresh Notes</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Search & Filters Container -->
+            <section class="controls-section">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Search notes by keywords, tags, or contents..." autocomplete="off">
+                    <button id="clear-search-btn" class="clear-search-btn" style="display: none;">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                
+                <div class="filters-row">
+                    <span class="filter-title">Filter Types:</span>
+                    <div class="filter-tags" id="filter-tags-container">
+                        <button class="filter-tag active" data-type="all">All</button>
+                        <button class="filter-tag" data-type="Feature">Features</button>
+                        <button class="filter-tag" data-type="Announcement">Announcements</button>
+                        <button class="filter-tag" data-type="Issue">Issues & Fixes</button>
+                        <button class="filter-tag" data-type="Deprecation">Deprecations</button>
+                        <button class="filter-tag" data-type="General">General</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Grid Content -->
+            <div class="feed-grid">
+                <!-- Feed Stream (Left/Center Column) -->
+                <section class="feed-stream">
+                    <!-- Loading State -->
+                    <div id="loading-state" class="loading-state">
+                        <div class="spinner-container">
+                            <div class="premium-spinner"></div>
+                        </div>
+                        <h3>Parsing feed data...</h3>
+                        <p>Fetching the latest official BigQuery releases from Google Cloud.</p>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="empty-state" class="empty-state" style="display: none;">
+                        <div class="empty-icon">
+                            <i class="fa-solid fa-newspaper"></i>
+                        </div>
+                        <h3>No release notes match your filters</h3>
+                        <p>Try resetting filters or changing your search terms.</p>
+                        <button id="reset-filters-btn" class="btn btn-secondary">Reset Filters</button>
+                    </div>
+
+                    <!-- Notes Container -->
+                    <div id="notes-container" class="notes-list">
+                        <!-- Appended dynamically -->
+                    </div>
+                </section>
+
+                <!-- Tweet Composer Panel (Right Column) -->
+                <section class="composer-column">
+                    <div class="sticky-composer">
+                        <div class="composer-card">
+                            <div class="composer-header">
+                                <div class="composer-title-group">
+                                    <i class="fa-brands fa-x-twitter x-logo"></i>
+                                    <h3>Tweet Composer</h3>
+                                </div>
+                                <span class="composer-instruction">Select a note to draft a post</span>
+                            </div>
+
+                            <div class="composer-body">
+                                <div class="composer-meta-preview" id="composer-meta-preview">
+                                    <div class="meta-placeholder">No note selected</div>
+                                </div>
+
+                                <div class="textarea-wrapper">
+                                    <textarea id="tweet-textarea" placeholder="Select a release note from the feed on the left. We will auto-generate an engaging post format here for you to edit!" maxlength="280" disabled></textarea>
+                                    <div class="character-progress-container">
+                                        <div class="progress-ring-box">
+                                            <svg class="progress-ring" width="36" height="36">
+                                                <circle class="progress-ring-circle-bg" stroke="#1d2d3d" stroke-width="3" fill="transparent" r="14" cx="18" cy="18"/>
+                                                <circle id="progress-circle" class="progress-ring-circle" stroke="#1d9bf0" stroke-width="3" fill="transparent" r="14" cx="18" cy="18"/>
+                                            </svg>
+                                            <span id="char-counter" class="char-counter">280</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="composer-templates" id="composer-templates-section" style="display: none;">
+                                    <span class="template-label">Select Style:</span>
+                                    <div class="template-buttons">
+                                        <button class="btn-template active" data-style="tech">Tech 🚀</button>
+                                        <button class="btn-template" data-style="bullet">Bullets 📝</button>
+                                        <button class="btn-template" data-style="minimal">Minimal 💡</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="composer-footer">
+                                <button id="tweet-btn" class="btn btn-tweet" disabled>
+                                    <i class="fa-brands fa-x-twitter"></i>
+                                    <span>Share on X</span>
+                                </button>
+                                <button id="preview-tweet-btn" class="btn btn-secondary btn-mock-post" disabled>
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    <span>Mock Post</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Success Notification Alert inside card -->
+                        <div id="composer-toast" class="composer-toast">
+                            <i class="fa-solid fa-circle-check"></i>
+                            <div class="toast-content">
+                                <strong>Success!</strong>
+                                <span>Mock post processed successfully.</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script imports -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
